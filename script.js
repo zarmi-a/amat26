@@ -1,4 +1,3 @@
-console.log("הסקריפט נטען בהצלחה! המערך מכיל: ", projects.length, " פרויקטים");
 
 // רשימת התלמידים והקבצים שלהם
 const projects = [
@@ -7,6 +6,9 @@ const projects = [
   { name: "עידו - תורת המשחקים", file: "projects/ido.html" },
   // כאן תוסיף עוד תלמידים בקלות
 ];
+
+console.log("הסקריפט נטען בהצלחה! המערך מכיל: ", projects.length, " פרויקטים");
+
 
 const listContainer = document.getElementById('buttons-list');
 const iframe = document.getElementById('project-viewer');
