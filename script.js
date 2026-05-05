@@ -1,9 +1,7 @@
 
 // רשימת התלמידים והקבצים שלהם
 const projects = [
-  { name: "נועם - יחס הזהב", file: "projects/noam.html" },
-  { name: "מאיה - פרקטלים", file: "projects/maya.html" },
-  { name: "עידו - תורת המשחקים", file: "projects/ido.html" },
+  { name: "עמית - חדר כושר", file: "projects/amit.html" }
   // כאן תוסיף עוד תלמידים בקלות
 ];
 
