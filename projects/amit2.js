@@ -1,14 +1,8 @@
-//import React, { useState, useEffect } from 'react';
-//import { Activity, Dumbbell, Ruler, Target, RotateCcw, BookOpen } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Activity, Dumbbell, Ruler, Target, RotateCcw, BookOpen } from 'lucide-react';
 
-// מחליף את ה-import של React
-//const { useState, useEffect } = React;
 
-// מחליף את ה-import של lucide-react
-// במבנה של CDN, האייקונים נמצאים תחת המשתנה הגלובלי lucide
-//const { Activity, Dumbbell, Ruler, Target, RotateCcw, BookOpen } = lucide;
-
-function App() {
+export default function App() {
   const [exercise, setExercise] = useState('lateral'); // 'lateral' | 'curl'
   const [angle, setAngle] = useState(45); // 0 to 180 degrees
   const [weight, setWeight] = useState(10); // 1 to 50 kg
