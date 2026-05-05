@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>סימולטור מסי נגד המגן - רן ובן</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f8; }
+        #pitch {
+            background-color: #388e3c;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.1) 2px, transparent 2px),
+                linear-gradient(90deg, rgba(255,255,255,0.1) 2px, transparent 2px);
+            background-size: 40px 40px;
+            position: relative;
+            overflow: hidden;
+            border: 5px solid #fff;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+        }
+        .player {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            position: absolute;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+        }
+        #messi { background-color: #00bfff; box-shadow: 0 0 15px #00bfff; }
+        #defender { background-color: #ff4d4d; box-shadow: 0 0 15px #ff4d4d; }
+        
+        .ball {
+            width: 14px;
+            height: 14px;
+            background-color: white;
+            border-radius: 50%;
+            position: absolute;
+            z-index: 25;
+            border: 1px solid black;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            background-image: radial-gradient(circle at 30% 30%, #fff, #ccc);
+        }
+
+        .name-label {
+            position: absolute;
+            transform: translate(-50%, -100%);
+            margin-top: -15px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            white-space: nowrap;
+            pointer-events: none;
+            font-weight: bold;
+        }
+
+        .vector-line { position: absolute; pointer-events: none; }
+        .dashed-line { border-top: 2px dashed rgba(255,255,255,0.8); }
+        .label-text { font-size: 14px; color: #fbbf24; position: absolute; font-weight: bold; text-shadow: 1px 1px 2px black; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-xl shadow-lg">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-black text-blue-900">סימולטור "מסי נגד המגן" ⚽</h1>
+            <div class="text-left">
+                <p class="text-sm text-gray-500 italic">פרויקט חקר עמ"ט ט'</p>
+                <p class="font-bold text-blue-700">חוקרים: רן ובן</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Sidebar Controls -->
+            <div class="bg-blue-50 p-5 rounded-lg border border-blue-100 shadow-inner">
+                <h2 class="font-bold mb-4 text-lg text-blue-800 border-b border-blue-200 pb-2">פרמטרים לחקירה</h2>
+                
+                <div class="mb-5">
+                    <label class="block text-sm font-semibold mb-2">זווית חיתוך של מסי: <span id="angleVal" class="text-blue-600 text-lg">45</span>°</label>
+                    <input type="range" id="angle" min="0" max="85" value="45" class="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <div class="mb-5">
+                    <label class="block text-sm font-semibold mb-2">תאוצת המגן: <span id="accelVal" class="text-red-600 text-lg">2.0</span> m/s²</label>
+                    <input type="range" id="accel" min="0.5" max="6" step="0.1" value="2.0" class="w-full h-2 bg-red-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <div class="mb-8">
+                    <label class="block text-sm font-semibold mb-2">זמן תגובה (קפיאה): <span id="reactionVal" class="text-red-600 text-lg">0.5</span> ש'</label>
+                    <input type="range" id="reaction" min="0" max="2" step="0.1" value="0.5" class="w-full h-2 bg-red-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <button id="startBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 px-4 rounded-xl transition-all transform hover:scale-105 shadow-lg mb-3 uppercase tracking-wider">
+                    התחל סימולציה!
+                </button>
+                <button id="resetBtn" class="w-full bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                    איפוס נתונים
+                </button>
+            </div>
+
+            <!-- Simulation Pitch -->
+            <div class="md:col-span-2 relative">
+                <div id="pitch" class="w-full h-[450px]">
+                    <!-- Players -->
+                    <div id="messi" class="player">
+                        <div class="name-label">מסי</div>
+                    </div>
+                    <div id="defender" class="player">
+                        <div class="name-label">מגן</div>
+                    </div>
+                    
+                    <!-- The Ball -->
+                    <div id="ball" class="ball"></div>
+                    
+                    <!-- Stats Overlay -->
+                    <div id="distanceDisplay" class="absolute top-4 left-4 bg-black/70 text-white p-3 rounded-lg text-sm border border-white/30 hidden z-30">
+                        <div>מרחק ביניהם: <span id="currentDist" class="font-bold text-yellow-400">0</span> מ'</div>
+                        <div id="timerDisplay">זמן ריצה: <span id="currentTime">0.0</span> ש'</div>
+                    </div>
+
+                    <!-- Math Vectors (Decomposition) -->
+                    <div id="vectorX" class="vector-line dashed-line hidden"></div>
+                    <div id="vectorY" class="vector-line dashed-line hidden"></div>
+                    <span id="labelX" class="label-text hidden">Vx (התקדמות)</span>
+                    <span id="labelY" class="label-text hidden">Vy (הסטה)</span>
+                </div>
+
+                <!-- Feedback Popup -->
+                <div id="resultBox" class="absolute inset-0 flex items-center justify-center pointer-events-none hidden z-50">
+                    <div class="bg-white/95 p-8 rounded-3xl shadow-2xl border-4 border-blue-500 scale-110 animate-bounce">
+                        <h2 id="resultText" class="text-4xl font-black text-center"></h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Explanation Section -->
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-4 bg-green-50 border-r-4 border-green-500 rounded-lg">
+                <h3 class="font-bold text-green-800 mb-1 italic">ניתוח חקר:</h3>
+                <p class="text-sm text-gray-700">שימו לב איך שינוי הזווית מגדיל את המשולש הצהוב. זהו רכיב ה-Y שמאלץ את המגן לבצע תיקון מסלול חד יותר בזמן שהוא מאיץ מ-$v_0=0$.</p>
+            </div>
+            <div class="p-4 bg-gray-800 text-gray-200 rounded-lg text-xs leading-relaxed font-mono">
+                 // נוסחאות קינמטיות וטריגונומטריה // <br>
+                 Messi: x(t) = V*cos(θ)*t , y(t) = V*sin(θ)*t <br>
+                 Defender: x(t) = 0.5 * a * (t - reaction_time)²
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const pitch = document.getElementById('pitch');
+        const messiEl = document.getElementById('messi');
+        const defenderEl = document.getElementById('defender');
+        const ballEl = document.getElementById('ball');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const resultBox = document.getElementById('resultBox');
+        const resultText = document.getElementById('resultText');
+        const distanceDisplay = document.getElementById('distanceDisplay');
+        const currentDistSpan = document.getElementById('currentDist');
+        const currentTimeSpan = document.getElementById('currentTime');
+
+        const vectorX = document.getElementById('vectorX');
+        const vectorY = document.getElementById('vectorY');
+        const labelX = document.getElementById('labelX');
+        const labelY = document.getElementById('labelY');
+
+        // Logic variables
+        let mPos = { x: 10, y: 50 }; // Initial Messi position %
+        let dPos = { x: 35, y: 50 }; // Initial Defender position %
+        const messiSpeed = 4.8; // Base speed
+        
+        let isRunning = false;
+        let animationId;
+        let startTime;
+
+        function updateUI() {
+            document.getElementById('angleVal').innerText = document.getElementById('angle').value;
+            document.getElementById('accelVal').innerText = document.getElementById('accel').value;
+            document.getElementById('reactionVal').innerText = document.getElementById('reaction').value;
+        }
+
+        ['angle', 'accel', 'reaction'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateUI);
+        });
+
+        function reset() {
+            isRunning = false;
+            cancelAnimationFrame(animationId);
+            mPos = { x: 10, y: 50 };
+            dPos = { x: 35, y: 50 };
+            updatePositions();
+            resultBox.classList.add('hidden');
+            distanceDisplay.classList.add('hidden');
+            hideVectors();
+            startBtn.disabled = false;
+        }
+
+        function updatePositions() {
+            const pW = pitch.clientWidth;
+            const pH = pitch.clientHeight;
+            
+            const mx = (mPos.x * pW / 100);
+            const my = (mPos.y * pH / 100);
+            const dx = (dPos.x * pW / 100);
+            const dy = (dPos.y * pH / 100);
+
+            messiEl.style.left = mx + 'px';
+            messiEl.style.top = my + 'px';
+            
+            defenderEl.style.left = dx + 'px';
+            defenderEl.style.top = dy + 'px';
+
+            // Ball stays at Messi's feet
+            ballEl.style.left = (mx + 10) + 'px';
+            ballEl.style.top = (my + 8) + 'px';
+        }
+
+        function drawVectors() {
+            const pW = pitch.clientWidth;
+            const pH = pitch.clientHeight;
+            const startX = 10 * pW / 100;
+            const startY = 50 * pH / 100;
+            const currX = mPos.x * pW / 100;
+            const currY = mPos.y * pH / 100;
+
+            // Horizontal vector
+            vectorX.style.left = startX + 'px';
+            vectorX.style.top = startY + 'px';
+            vectorX.style.width = (currX - startX) + 'px';
+            vectorX.style.height = '1px';
+            vectorX.classList.remove('hidden');
+
+            // Vertical vector
+            vectorY.style.left = currX + 'px';
+            vectorY.style.top = Math.min(startY, currY) + 'px';
+            vectorY.style.width = '1px';
+            vectorY.style.height = Math.abs(currY - startY) + 'px';
+            vectorY.classList.remove('hidden');
+
+            // Labels
+            labelX.style.left = (startX + (currX - startX)/2 - 30) + 'px';
+            labelX.style.top = (startY + 5) + 'px';
+            labelX.classList.remove('hidden');
+
+            labelY.style.left = (currX + 10) + 'px';
+            labelY.style.top = (startY + (currY - startY)/2 - 10) + 'px';
+            labelY.classList.remove('hidden');
+        }
+
+        function hideVectors() {
+            [vectorX, vectorY, labelX, labelY].forEach(el => el.classList.add('hidden'));
+        }
+
+        function startSim() {
+            if (isRunning) return;
+            reset();
+            isRunning = true;
+            startBtn.disabled = true;
+            startTime = performance.now();
+            distanceDisplay.classList.remove('hidden');
+            animate();
+        }
+
+        function animate() {
+            if (!isRunning) return;
+            
+            const now = performance.now();
+            const t = (now - startTime) / 1000;
+            currentTimeSpan.innerText = t.toFixed(1);
+
+            const angleDeg = parseFloat(document.getElementById('angle').value);
+            const angleRad = angleDeg * (Math.PI / 180);
+            const accel = parseFloat(document.getElementById('accel').value);
+            const reaction = parseFloat(document.getElementById('reaction').value);
+
+            // Messi kinematic movement
+            mPos.x = 10 + (messiSpeed * Math.cos(angleRad) * t * 6.5); 
+            mPos.y = 50 - (messiSpeed * Math.sin(angleRad) * t * 6.5);
+
+            // Defender chase logic
+            if (t > reaction) {
+                const effectiveT = t - reaction;
+                const dx = mPos.x - dPos.x;
+                const dy = mPos.y - dPos.y;
+                const distToTarget = Math.sqrt(dx*dx + dy*dy);
+                
+                if (distToTarget > 0.5) {
+                    // Calculating movement based on constant acceleration
+                    const moveStep = 0.5 * accel * effectiveT; 
+                    dPos.x += (dx / distToTarget) * moveStep;
+                    dPos.y += (dy / distToTarget) * moveStep;
+                }
+            }
+
+            updatePositions();
+            drawVectors();
+
+            // Collision and boundary check
+            const realDist = Math.sqrt(Math.pow(mPos.x - dPos.x, 2) + Math.pow(mPos.y - dPos.y, 2));
+            currentDistSpan.innerText = (realDist/2.2).toFixed(1);
+
+            if (realDist < 2.8) {
+                endSim("המגן חטף! נסה זווית אחרת", "text-red-600 border-red-500");
+            } else if (mPos.x > 98 || mPos.y < 2 || mPos.y > 98) {
+                endSim("גווווול! מסי עבר!", "text-green-600 border-green-500");
+            } else {
+                animationId = requestAnimationFrame(animate);
+            }
+        }
+
+        function endSim(msg, styleClasses) {
+            isRunning = false;
+            resultText.innerText = msg;
+            resultText.className = "text-4xl font-black text-center " + styleClasses;
+            resultBox.classList.remove('hidden');
+            startBtn.disabled = false;
+        }
+
+        startBtn.addEventListener('click', startSim);
+        resetBtn.addEventListener('click', reset);
+        updateUI();
+        updatePositions();
+    </script>
+</body>
+</html>
+
