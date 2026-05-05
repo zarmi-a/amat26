@@ -3,7 +3,7 @@
 const projects = [
   { name: "עמית ולביא - חדר כושר", file: "projects/amit.html" },
   { name: "עילי - השקעה וריבית", file: "projects/ilay.html" },
-  {name: "רן - מסייעים והמגן", file: "projects/ran.html"}
+  {name: "רן - מסי והמגן", file: "projects/ran.html"}
   // כאן תוסיף עוד תלמידים בקלות
 ];
 
