@@ -1,0 +1,22 @@
+body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; overflow: hidden; }
+.container { display: flex; height: 100vh; flex-direction: row-reverse; } /* תפריט בימין */
+
+.sidebar { 
+    width: 250px; background: #2c3e50; color: white; padding: 20px; 
+    box-shadow: -2px 0 5px rgba(0,0,0,0.1); overflow-y: auto;
+}
+
+.sidebar button {
+    width: 100%; padding: 12px; margin-bottom: 10px; border: none;
+    background: #34495e; color: white; cursor: pointer; text-align: right;
+    border-radius: 5px; transition: 0.3s;
+}
+
+.sidebar button:hover { background: #1abc9c; }
+
+.content { flex: 1; position: relative; background: #ecf0f1; }
+iframe { width: 100%; height: 100%; border: none; display: none; }
+#welcome-message { 
+    display: flex; flex-direction: column; justify-content: center; 
+    align-items: center; height: 100%; 
+}
