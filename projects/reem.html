@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>פלטת המחקר: טרילוגיית הצבעים</title>
+    <script src="https://cdn.tailwindcss.com"></script&gt;
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;700&display=swap&#39;);
+       
+        body {
+            font-family: 'Assistant', sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+            transition: background 1.5s ease-in-out;
+        }
+
+        /* עולמות */
+        .world-garden { background: #87CEEB; }
+        .world-hell { background: #2a0000; }
+        .world-heaven { background: #f0f9ff; }
+
+        .sky-layer { position: fixed; top: 0; width: 100%; height: 60%; z-index: -1; transition: all 1.5s; }
+        .ground-layer { position: fixed; bottom: 0; width: 100%; height: 40%; z-index: -1; transition: all 1.5s; }
+
+        /* עיצוב עולם 1 - גינה */
+        .world-garden .ground-layer { background: linear-gradient(to bottom, #7cfc00, #228b22); border-top: 10px solid #8B4513; }
+
+        /* עיצוב גיהנום */
+        .world-hell .ground-layer { background: linear-gradient(to bottom, #800000, #000000); }
+        .lava-bubble { position: absolute; background: #ff4500; border-radius: 50%; opacity: 0.6; animation: bubbleUp 4s infinite; }
+        @keyframes bubbleUp { 0% { transform: translateY(0) scale(1); opacity: 0.6; } 100% { transform: translateY(-100px) scale(1.5); opacity: 0; } }
+
+        /* עיצוב גן עדן */
+        .world-heaven .sky-layer { background: linear-gradient(to bottom, #7dd3fc, #ffffff); }
+        .world-heaven .ground-layer { background: #ffffff; opacity: 0.8; box-shadow: 0 -20px 50px white; }
+        .golden-gate { position: absolute; bottom: 30%; left: 50%; transform: translateX(-50%); font-size: 8rem; opacity: 0.3; }
+
+        /* אנימציות פרפרים */
+        @keyframes butterfly-fly {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(100px, -50px) rotate(10deg); }
+            50% { transform: translate(200px, 0px) rotate(-10deg); }
+            75% { transform: translate(100px, 50px) rotate(5deg); }
+            100% { transform: translate(0, 0) rotate(0deg); }
+        }
+        .butterfly { position: absolute; font-size: 2rem; animation: butterfly-fly 10s ease-in-out infinite; }
+
+        .character-area { position: absolute; top: 100px; right: 10%; display: flex; gap: 20px; }
+
+        .canvas-area { box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 12px solid #fff; }
+       
+        /* פלטה בשורה אחת */
+        #paletteContainer { display: flex; flex-wrap: nowrap; overflow-x: auto; padding: 10px; gap: 10px; justify-content: center; width: 100%; }
+        .palette-button { flex: 0 0 auto; transition: transform 0.2s; cursor: pointer; border: 4px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .palette-button:hover { transform: scale(1.15); }
+        .disabled-ink { opacity: 0.2; cursor: not-allowed; filter: grayscale(1); }
+
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100; background: white; padding: 2.5rem; border-radius: 2.5rem; text-align: center; box-shadow: 0 0 100px rgba(0,0,0,0.5); width: 90%; max-width: 450px; }
+        .hint-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 90; backdrop-filter: blur(5px); }
+       
+        #counters { display: flex; flex-wrap: nowrap; gap: 8px; justify-content: center; }
+    </style>
+</head>
+<body id="mainBody" class="min-h-screen flex flex-col items-center p-4 world-garden">
+
+    <div class="sky-layer" id="skyLayer">
+        <div id="decoContainer"></div>
+        <div class="character-area" id="topChar"></div>
+        <div id="heavenGate" class="golden-gate hidden">⛩️</div>
+    </div>
+
+    <div class="ground-layer" id="groundLayer"></div>
+
+    <header class="text-center mb-6 bg-white/90 backdrop-blur p-5 rounded-3xl shadow-xl w-full max-w-2xl z-10 border-b-4 border-blue-200">
+        <h1 id="gameTitle" class="text-3xl font-bold text-slate-800">הרפתקת הצבעים: הגינה</h1>
+        <div class="flex justify-center gap-4 mt-3">
+            <span id="levelDisplay" class="bg-blue-600 text-white px-5 py-1.5 rounded-full font-bold shadow-md">שלב 1 / 10</span>
+            <span id="hintsLeftDisplay" class="bg-amber-500 text-white px-5 py-1.5 rounded-full font-bold shadow-md border-2 border-white">רמזים: 10</span>
+        </div>
+    </header>
+
+    <main class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-6xl z-10">
+        <div class="bg-white/95 p-8 rounded-[3rem] shadow-2xl flex flex-col items-center">
+            <h2 class="text-xl font-bold mb-4 text-slate-700">הקנבס המלכותי</h2>
+            <div id="workingCanvas" class="canvas-area w-56 h-56 rounded-3xl mb-6 flex items-center justify-center transition-all duration-700 bg-white">
+                <div id="distanceLabel" class="bg-black/80 text-white px-5 py-2 rounded-full font-mono text-xl font-bold shadow-lg hidden">מרחק: --</div>
+            </div>
+            <div id="combinationView" class="flex flex-wrap justify-center gap-1 mb-6 min-h-[24px]">
+                <span class="text-xs text-slate-400 w-full text-center mb-1">תערובת:</span>
+            </div>
+            <div id="counters" class="mb-6"></div>
+            <div class="flex gap-4">
+                <button id="resetBtn" class="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-2xl font-bold transition-all shadow-lg">נקה</button>
+                <button id="hintBtn" class="bg-amber-500 hover:bg-amber-600 text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg">💡 רמז</button>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-6">
+            <div class="bg-white/95 p-8 rounded-[3rem] shadow-2xl flex flex-col items-center">
+                <h2 class="text-xl font-bold mb-4 text-slate-700">צבע היעד</h2>
+                <div id="targetColor" class="w-32 h-32 rounded-3xl shadow-inner mb-4 border-8 border-white"></div>
+                <p id="difficultyNote" class="text-sm text-blue-600 font-bold bg-blue-50 px-4 py-1 rounded-full">--</p>
+            </div>
+            <div class="bg-white/95 p-6 rounded-[3rem] shadow-2xl w-full overflow-hidden">
+                <h2 class="text-xl font-bold mb-5 text-center text-slate-700">פלטה (שורה אחת)</h2>
+                <div id="paletteContainer"></div>
+            </div>
+        </div>
+    </main>
+
+    <div id="overlay" class="hint-overlay"></div>
+   
+    <!-- מודאל פתיחה והוראות -->
+    <div id="welcomeModal" class="modal" style="display: block;">
+        <div class="text-7xl mb-4">🎨</div>
+        <h2 class="text-3xl font-bold mb-4 text-blue-600">ברוכים הבאים!</h2>
+        <div class="text-right text-lg mb-8 space-y-4 text-slate-600">
+            <p>שלום אמן צעיר! המטרה שלך פשוטה: להגיע בדיוק לצבע היעד שמוצג בצד.</p>
+            <p><strong>איך זה עובד?</strong><br>בכל פעם שאתה לוחץ על צבע, אתה מוסיף "מנה" שלו לקערה. המשחק מחשב את הממוצע של כל הצבעים ששמת.</p>
+            <p>זה ממש כמו לערבב גואש! אם תשים המון אדום וקצת כחול, הצבע יראה אדמדם-סגול.</p>
+            <p><strong>שימו לב:</strong> אפשר להשתמש בכל צבע עד 3 פעמים בלבד. תחשבו טוב לפני כל לחיצה!</p>
+        </div>
+        <button id="startPlayBtn" class="bg-blue-600 text-white px-12 py-4 rounded-full text-xl font-bold shadow-xl hover:bg-blue-700 transition-all">הבנתי, בוא נתחיל!</button>
+    </div>
+
+    <div id="msgModal" class="modal">
+        <div id="msgIcon" class="text-7xl mb-4">🏆</div>
+        <h2 id="msgTitle" class="text-3xl font-bold mb-4">אמן אמיתי!</h2>
+        <p id="msgBody" class="text-xl mb-8 text-slate-600 leading-relaxed"></p>
+        <button id="msgActionBtn" class="bg-blue-600 text-white px-12 py-4 rounded-full text-xl font-bold shadow-xl">אני מוכן!</button>
+    </div>
+
+    <div id="hintModal" class="modal">
+        <div class="text-6xl mb-4">💡</div>
+        <h2 class="text-2xl font-bold mb-2">עזרת המומחה</h2>
+        <div id="hintContent" class="text-2xl p-6 bg-amber-50 rounded-2xl mb-6 font-bold text-amber-900 border-2 border-amber-200"></div>
+        <button id="closeHintBtn" class="bg-amber-500 text-white px-12 py-3 rounded-full font-bold">המשך</button>
+    </div>
+
+    <div id="victoryModal" class="modal">
+        <div class="text-7xl mb-4 animate-bounce">✨</div>
+        <h2 class="text-4xl font-bold mb-4 text-green-600">כל הכבוד!</h2>
+        <p class="text-xl mb-8 text-slate-600">דיוק מדהים!</p>
+        <button id="nextLevelBtn" class="bg-green-500 text-white px-14 py-4 rounded-full text-2xl font-bold shadow-2xl">לשלב הבא</button>
+    </div>
+
+    <script>
+        const COLORS = {
+            red: { rgb: [255, 0, 0], label: 'אדום', icon: '🔴' },
+            yellow: { rgb: [255, 225, 0], label: 'צהוב', icon: '🟡' },
+            blue: { rgb: [0, 80, 255], label: 'כחול', icon: '🔵' },
+            green: { rgb: [0, 180, 0], label: 'ירוק', icon: '🟢' },
+            purple: { rgb: [128, 0, 128], label: 'סגול', icon: '🟣' },
+            white: { rgb: [255, 255, 255], label: 'לבן', icon: '⚪' }
+        };
+
+        const WORLDS = {
+            1: { name: "הגינה הירוקה", class: "world-garden", title: "הרפתקת הצבעים: הגינה" },
+            2: { name: "גיהנום הלבה", class: "world-hell", title: "אתגר הלבה המבעבעת" },
+            3: { name: "גן עדן", class: "world-heaven", title: "היכל הצבעים של גן עדן" }
+        };
+
+        let currentWorld = 1;
+        let worldLevel = 1;
+        let totalHints = 10;
+        let currentMashes = [];
+        let solutionMashes = [];
+        let counts = {};
+        let targetRGB = [0, 0, 0];
+
+        function updateWorldUI() {
+            const body = document.getElementById('mainBody');
+            const deco = document.getElementById('decoContainer');
+            const chars = document.getElementById('topChar');
+            const title = document.getElementById('gameTitle');
+            const gate = document.getElementById('heavenGate');
+
+            body.className = `min-h-screen flex flex-col items-center p-4 ${WORLDS[currentWorld].class}`;
+            title.innerText = WORLDS[currentWorld].title;
+            deco.innerHTML = '';
+            chars.innerHTML = '';
+
+            if (currentWorld === 1) {
+                for(let i=0; i<3; i++) {
+                    const b = document.createElement('div');
+                    b.className = 'butterfly';
+                    b.innerText = '🦋';
+                    b.style.left = (20 + i*30) + '%';
+                    b.style.top = (10 + i*10) + '%';
+                    b.style.animationDelay = (i*2) + 's';
+                    chars.appendChild(b);
+                }
+                gate.classList.add('hidden');
+            } else if (currentWorld === 2) {
+                for(let i=0; i<8; i++) {
+                    const b = document.createElement('div');
+                    b.className = 'lava-bubble';
+                    b.style.left = Math.random()*100 + '%';
+                    b.style.bottom = '0';
+                    b.style.width = b.style.height = (20 + Math.random()*30) + 'px';
+                    b.style.animationDelay = Math.random()*4 + 's';
+                    deco.appendChild(b);
+                }
+                chars.innerHTML = '<div class="text-5xl">🦇</div><div class="text-5xl">🔥</div>';
+                gate.classList.add('hidden');
+            } else if (currentWorld === 3) {
+                chars.innerHTML = '<div class="text-5xl">🕊️</div><div class="text-5xl">✨</div>';
+                gate.classList.remove('hidden');
+            }
+        }
+
+        function initLevel() {
+            updateWorldUI();
+            const palette = document.getElementById('paletteContainer');
+            const counters = document.getElementById('counters');
+            palette.innerHTML = '';
+            counters.innerHTML = '';
+           
+            let activeKeys = [];
+            const maxInksPerColor = 3;
+
+            if (currentWorld === 1) {
+                activeKeys = (worldLevel <= 6) ? ['red', 'yellow', 'blue'] : ['red', 'yellow', 'blue', 'green'];
+            } else if (currentWorld === 2) {
+                activeKeys = (worldLevel <= 6) ? ['red', 'yellow', 'blue', 'green'] : ['red', 'yellow', 'blue', 'green', 'purple'];
+            } else if (currentWorld === 3) {
+                activeKeys = (worldLevel <= 5) ? ['red', 'yellow', 'blue', 'green', 'purple'] : ['red', 'yellow', 'blue', 'green', 'purple', 'white'];
+            }
+           
+            activeKeys.forEach(key => {
+                counts[key] = 0;
+                const btn = document.createElement('div');
+                btn.id = `add-${key}`;
+                btn.className = `palette-button w-14 h-14 rounded-full flex items-center justify-center text-xl`;
+                btn.style.backgroundColor = `rgb(${COLORS[key].rgb.join(',')})`;
+                btn.innerHTML = COLORS[key].icon;
+                btn.onclick = () => addInk(key, maxInksPerColor);
+                palette.appendChild(btn);
+
+                const c = document.createElement('div');
+                c.className = 'bg-white/80 p-2 rounded-xl border border-slate-200 text-center shadow-sm min-w-[50px]';
+                c.innerHTML = `<div id="${key}Count" class="font-bold text-xs">0/3</div><div class="text-[9px] text-slate-500">${COLORS[key].label}</div>`;
+                counters.appendChild(c);
+            });
+
+            document.getElementById('levelDisplay').innerText = `עולם ${currentWorld} | שלב ${worldLevel} / 10`;
+            generateTarget(activeKeys, maxInksPerColor);
+        }
+
+        function generateTarget(activeKeys, maxPer) {
+            let numMashes = 3;
+            if (currentWorld === 1) numMashes = (worldLevel <= 6) ? 3 : 4;
+            else if (currentWorld === 2) numMashes = (worldLevel <= 6) ? 7 : 10;
+            else if (currentWorld === 3) numMashes = (worldLevel <= 5) ? 12 : 16;
+
+            solutionMashes = [];
+            let tempCounts = {};
+            activeKeys.forEach(k => tempCounts[k] = 0);
+
+            for(let i=0; i<numMashes; i++) {
+                let available = activeKeys.filter(k => tempCounts[k] < maxPer);
+                if (available.length === 0) break;
+                let rk = available[Math.floor(Math.random() * available.length)];
+                tempCounts[rk]++;
+                solutionMashes.push(rk);
+            }
+
+            let sums = [0,0,0];
+            solutionMashes.forEach(k => {
+                sums[0]+=COLORS[k].rgb[0]; sums[1]+=COLORS[k].rgb[1]; sums[2]+=COLORS[k].rgb[2];
+            });
+            targetRGB = sums.map(v => Math.round(v / solutionMashes.length));
+            document.getElementById('targetColor').style.backgroundColor = `rgb(${targetRGB.join(',')})`;
+            document.getElementById('difficultyNote').innerText = `ערבב ${solutionMashes.length} מנות צבע`;
+            resetCurrent();
+        }
+
+        function addInk(key, max) {
+            if ((counts[key] || 0) < max) {
+                counts[key] = (counts[key] || 0) + 1;
+                currentMashes.push(COLORS[key].rgb);
+                updateApp();
+            }
+        }
+
+        function updateApp() {
+            let currentRGB = [255, 255, 255];
+            const view = document.getElementById('combinationView');
+            view.innerHTML = '<span class="text-xs text-slate-400 w-full text-center mb-1">תערובת:</span>';
+           
+            if (currentMashes.length > 0) {
+                const sums = currentMashes.reduce((acc, curr) => [acc[0]+curr[0], acc[1]+curr[1], acc[2]+curr[2]], [0,0,0]);
+                currentRGB = sums.map(v => Math.round(v / currentMashes.length));
+               
+                const dist = Math.sqrt(Math.pow(currentRGB[0]-targetRGB[0],2)+Math.pow(currentRGB[1]-targetRGB[1],2)+Math.pow(currentRGB[2]-targetRGB[2],2));
+                const label = document.getElementById('distanceLabel');
+                label.innerText = `מרחק: ${dist.toFixed(1)}`;
+                label.classList.remove('hidden');
+               
+                currentMashes.forEach(m => {
+                    const d = document.createElement('div');
+                    d.className = "w-3 h-3 rounded-full border border-white shadow-sm";
+                    d.style.backgroundColor = `rgb(${m.join(',')})`;
+                    view.appendChild(d);
+                });
+
+                if (dist < 8) showVictory();
+            }
+
+            document.getElementById('workingCanvas').style.backgroundColor = `rgb(${currentRGB.join(',')})`;
+            for (let k in COLORS) {
+                const el = document.getElementById(`${k}Count`);
+                if (el) el.innerText = `${counts[k] || 0}/3`;
+                const btn = document.getElementById(`add-${k}`);
+                if (btn) btn.classList.toggle('disabled-ink', (counts[k] || 0) >= 3);
+            }
+        }
+
+        function showVictory() {
+            document.getElementById('victoryModal').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function nextLevel() {
+            document.getElementById('victoryModal').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+            if (worldLevel === 10) showTransition();
+            else { worldLevel++; initLevel(); }
+        }
+
+        function showTransition() {
+            const modal = document.getElementById('msgModal');
+            const title = document.getElementById('msgTitle');
+            const body = document.getElementById('msgBody');
+            const icon = document.getElementById('msgIcon');
+            const btn = document.getElementById('msgActionBtn');
+
+            if (currentWorld === 1) {
+                icon.innerText = '🏆';
+                title.innerText = "אמן אמיתי!";
+                body.innerText = "אבל האם תצליח לעמוד באתגר הבא? אנחנו יורדים למעמקי הלבה! הרמזים שלך התחדשו ל-10.";
+                btn.onclick = () => { currentWorld = 2; worldLevel = 1; totalHints = 10; document.getElementById('hintsLeftDisplay').innerText = `רמזים: ${totalHints}`; modal.style.display = 'none'; document.getElementById('overlay').style.display = 'none'; initLevel(); };
+            } else if (currentWorld === 2) {
+                icon.innerText = '🌋';
+                title.innerText = "שרדת את הלבה!";
+                body.innerText = "האם אתה מוכן לאתגר האחרון? גן עדן מחכה לך עם הצבע הלבן. הרמזים התחדשו ל-10.";
+                btn.onclick = () => { currentWorld = 3; worldLevel = 1; totalHints = 10; document.getElementById('hintsLeftDisplay').innerText = `רמזים: ${totalHints}`; modal.style.display = 'none'; document.getElementById('overlay').style.display = 'none'; initLevel(); };
+            } else {
+                icon.innerText = '👑';
+                title.innerText = "המאסטר של גן עדן!";
+                body.innerText = "סיימת את כל האתגרים!";
+                btn.innerText = "התחל מחדש";
+                btn.onclick = () => location.reload();
+            }
+            modal.style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function showHint() {
+            if (totalHints <= 0) return;
+            const currentKeysCount = {};
+            currentMashes.forEach(m => {
+                const key = Object.keys(COLORS).find(k => COLORS[k].rgb[0] === m[0] && COLORS[k].rgb[1] === m[1]);
+                currentKeysCount[key] = (currentKeysCount[key] || 0) + 1;
+            });
+            const solCounts = {};
+            solutionMashes.forEach(k => solCounts[k] = (solCounts[k] || 0) + 1);
+            let rec = "";
+            for(let k in solCounts) { if((solCounts[k] || 0) > (currentKeysCount[k] || 0)) { rec = k; break; } }
+            document.getElementById('hintContent').innerHTML = rec ? `המומחה מציע להוסיף מנה של <span style="color:rgb(${COLORS[rec].rgb.join(',')})">${COLORS[rec].label} ${COLORS[rec].icon}</span>` : "התערובת עמוסה מדי, נקה והתחל שוב.";
+            totalHints--;
+            document.getElementById('hintsLeftDisplay').innerText = `רמזים: ${totalHints}`;
+            document.getElementById('hintModal').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function resetCurrent() {
+            currentMashes = [];
+            for (let k in counts) counts[k] = 0;
+            updateApp();
+            document.getElementById('distanceLabel').classList.add('hidden');
+        }
+
+        document.getElementById('startPlayBtn').onclick = () => {
+            document.getElementById('welcomeModal').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+            initLevel();
+        };
+        document.getElementById('resetBtn').onclick = resetCurrent;
+        document.getElementById('nextLevelBtn').onclick = nextLevel;
+        document.getElementById('hintBtn').onclick = showHint;
+        document.getElementById('closeHintBtn').onclick = () => {
+            document.getElementById('hintModal').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+        };
+
+        window.onload = () => {
+            document.getElementById('overlay').style.display = 'block';
+        };
+    </script>
+</body>
+</html>
