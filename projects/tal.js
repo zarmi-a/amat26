@@ -433,4 +433,4 @@ function App() {
 
       </div>
     </div>
-  );
+  )}; 
