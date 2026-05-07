@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ניתוח חקר: קרינה ואטמוספירה - אגם ואלה</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; }
+        .visualizer-area {
+            background: linear-gradient(to bottom, #075985 0%, #0ea5e9 50%, #bae6fd 80%, #fef08a 80%, #eab308 100%);
+            height: 200px;
+            border-radius: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .sun-disk {
+            position: absolute;
+            width: 36px; height: 36px;
+            background: radial-gradient(circle, #ffffff, #facc15);
+            border-radius: 50%;
+            box-shadow: 0 0 30px #facc15;
+            z-index: 30;
+        }
+        .laser-ray {
+            position: absolute;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.8);
+            transform-origin: top left;
+            z-index: 20;
+        }
+        .data-card { background: white; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .chart-wrapper { height: 250px; width: 100%; }
+        input[type=range] { direction: ltr; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-black text-sky-900">פרויקט חקר: זהירות, קרינה!</h1>
+            <p class="text-sky-700 text-lg">חוקרות: <span class="font-bold">אגם ואלה</span> | מודל מתמטי משולב</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Simulation Controls -->
+            <div class="data-card lg:col-span-1">
+                <h3 class="font-bold text-gray-800 mb-4 border-b pb-2 text-center text-lg">שליטה בפרמטרים</h3>
+                
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-gray-600 mb-2">זווית זניט ($\theta$): <span id="angle-txt" class="text-sky-600">0</span>°</label>
+                    <input type="range" id="angle-range" min="0" max="85" value="0" class="w-full h-2 bg-sky-200 rounded-lg appearance-none cursor-pointer accent-sky-600">
+                </div>
+
+                <div class="bg-sky-50 p-4 rounded-xl space-y-3">
+                    <div class="flex justify-between items-center text-sm">
+                        <span>אורך המסלול ($L$):</span>
+                        <span id="l-txt" class="font-mono font-bold">10.0 ק"מ</span>
+                    </div>
+                    <div class="flex justify-between items-center text-sm">
+                        <span>עוצמת קרינה ($I$):</span>
+                        <span id="i-txt" class="font-mono font-bold text-red-600">100%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visualization Area -->
+            <div class="lg:col-span-3 visualizer-area" id="stage">
+                <div id="sun-body" class="sun-disk"></div>
+                <div id="sun-ray" class="laser-ray"></div>
+                <!-- Character -->
+                <svg id="character" class="absolute bottom-[18%] left-1/2 -translate-x-1/2 w-8 h-16" viewBox="0 0 100 200">
+                    <circle cx="50" cy="30" r="22" class="skin" fill="#ffe0bd" />
+                    <rect x="25" y="55" width="50" height="85" rx="8" class="skin" fill="#ffe0bd" />
+                    <rect x="30" y="145" width="15" height="50" rx="4" class="skin" fill="#ffe0bd" />
+                    <rect x="55" y="145" width="15" height="50" rx="4" class="skin" fill="#ffe0bd" />
+                </svg>
+            </div>
+        </div>
+
+        <!-- The Two Graphs -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Graph 1: L as a function of Angle -->
+            <div class="data-card border-t-4 border-sky-500">
+                <h3 class="text-center font-bold text-gray-700 mb-4">גרף 1: אורך המסלול ($L$) לפי הזווית ($\theta$)</h3>
+                <div class="chart-wrapper">
+                    <canvas id="lThetaChart"></canvas>
+                </div>
+                <div class="mt-4 text-center text-xs text-gray-500 italic">
+                    $L = \frac{h}{\cos(\theta)}$ :קשר טריגונומטרי
+                </div>
+            </div>
+
+            <!-- Graph 2: Intensity as a function of Length -->
+            <div class="data-card border-t-4 border-red-500">
+                <h3 class="text-center font-bold text-gray-700 mb-4">גרף 2: עוצמת קרינה ($I$) לפי אורך המסלול ($L$)</h3>
+                <div class="chart-wrapper">
+                    <canvas id="iLChart"></canvas>
+                </div>
+                <div class="mt-4 text-center text-xs text-gray-500 italic">
+                    $I = I_0 \cdot e^{-k(L-h)}$ :חוק באר-למברט
+                </div>
+            </div>
+        </div>
+
+        <footer class="mt-12 text-center text-gray-400 text-sm">
+            נוצר עבור עבודת חקר מתמטית - אגם ואלה
+        </footer>
+    </div>
+
+    <script>
+        const slider = document.getElementById('angle-range');
+        const angleDisplay = document.getElementById('angle-txt');
+        const lDisplay = document.getElementById('l-txt');
+        const iDisplay = document.getElementById('i-txt');
+        const sun = document.getElementById('sun-body');
+        const ray = document.getElementById('sun-ray');
+        const skinParts = document.querySelectorAll('.skin');
+
+        // Model parameters
+        const h = 10; // Atmosphere height in km
+        const k = 0.22; // Absorption coefficient
+        const I0 = 100; // Initial intensity in %
+
+        // Chart 1: Path length vs angle
+        const lThetaCtx = document.getElementById('lThetaChart').getContext('2d');
+        const lThetaLabels = Array.from({length: 44}, (_, i) => i * 2);
+        const lThetaValues = lThetaLabels.map(a => h / Math.cos(a * Math.PI / 180));
+        
+        const lThetaChart = new Chart(lThetaCtx, {
+            type: 'line',
+            data: {
+                labels: lThetaLabels,
+                datasets: [{
+                    label: 'אורך מסלול (ק"מ)',
+                    data: lThetaValues,
+                    borderColor: '#0ea5e9',
+                    backgroundColor: 'rgba(14, 165, 233, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 0
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { 
+                    x: { title: { display: true, text: 'זווית שמש (מעלות)' } },
+                    y: { title: { display: true, text: 'אורך L (ק"מ)' }, max: 80 }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // Chart 2: Intensity vs path length
+        const iLCtx = document.getElementById('iLChart').getContext('2d');
+        const iLLabels = Array.from({length: 30}, (_, i) => h + i * 2.5);
+        const iLValues = iLLabels.map(len => I0 * Math.exp(-k * (len - h)));
+
+        const iLChart = new Chart(iLCtx, {
+            type: 'line',
+            data: {
+                labels: iLLabels,
+                datasets: [{
+                    label: 'עוצמת קרינה (%)',
+                    data: iLValues,
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 0
+                }]
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: { 
+                    x: { title: { display: true, text: 'אורך המסלול L (ק"מ)' } },
+                    y: { title: { display: true, text: 'קרינה I (%)' }, min: 0, max: 100 }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        function updateSimulation() {
+            const angle = parseInt(slider.value);
+            const rad = angle * Math.PI / 180;
+            const L = h / Math.cos(rad);
+            const intensity = I0 * Math.exp(-k * (L - h));
+
+            angleDisplay.innerText = angle;
+            lDisplay.innerText = L.toFixed(1) + " ק\"מ";
+            iDisplay.innerText = Math.round(intensity) + "%";
+
+            // Update Sun position
+            const stage = document.getElementById('stage').getBoundingClientRect();
+            const sunX = 50 + (Math.sin(rad) * 40);
+            const sunY = 15 + (1 - Math.cos(rad)) * 30;
+            sun.style.left = `calc(${sunX}% - 18px)`;
+            sun.style.top = `${sunY}%`;
+
+            // Update Ray
+            const sunRect = sun.getBoundingClientRect();
+            const startX = sunRect.left + 18 - stage.left;
+            const startY = sunRect.top + 18 - stage.top;
+            const endX = stage.width / 2;
+            const endY = stage.height * 0.8;
+            const dist = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+            const rot = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
+
+            ray.style.width = dist + 'px';
+            ray.style.left = startX + 'px';
+            ray.style.top = startY + 'px';
+            ray.style.transform = `rotate(${rot}deg)`;
+            ray.style.opacity = Math.max(0.2, intensity / 100);
+
+            // Update skin color
+            const burn = intensity / 100;
+            const skinCol = `rgb(255, ${224 - (224-100)*burn}, ${189 - (189-50)*burn})`;
+            skinParts.forEach(p => p.setAttribute('fill', skinCol));
+
+            // Update graph markers
+            drawMarker(lThetaChart, angle);
+            drawMarker(iLChart, L);
+        }
+
+        function drawMarker(chart, val) {
+            chart.update();
+            const x = chart.scales.x.getPixelForValue(val);
+            const ctx = chart.ctx;
+            ctx.save();
+            ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x, chart.scales.y.top);
+            ctx.lineTo(x, chart.scales.y.bottom);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        slider.addEventListener('input', updateSimulation);
+        window.onload = updateSimulation;
+    </script>
+
+    <!-- MathJax for rendering formulas -->
+    <script>
+        window.MathJax = { tex: { inlineMath: [['$', '$']] } };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</body>
+</html>
