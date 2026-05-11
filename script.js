@@ -6,7 +6,10 @@ const projects = [
   {name: "רן ובן - מסי והמגן", file: "projects/ran.html"},
   {name: "ראם - ערבוב צבעים", file: "projects/reem.html"},
   {name: "אגם ואלה - מקדם UV", file: "projects/agam.html"},
-  {name: "טל - כדורגל", file: "projects/tal.html"}
+  {name: "טל - כדורגל", file: "projects/tal.html"},
+  {name: "איתמר, נדב, יאיר - מרוצי סוסים", file: "projects/itamar.html"},
+  {name:"נדב, נועם - כדורמיים", file: "projects/nadav.html"},
+  {name: "רומי - פירואט", file: "projects/romi.html"}
   // כאן תוסיף עוד תלמידים בקלות
 ];
 

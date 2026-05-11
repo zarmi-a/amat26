@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>סימולטור פירואט - רומי</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;700&display=swap');
+        
+        body {
+            font-family: 'Assistant', sans-serif;
+            background: #0f172a;
+            color: white;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .studio-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.5rem;
+            background: radial-gradient(circle at top, #1e293b 0%, #0f172a 100%);
+        }
+
+        .floor {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 25%;
+            background: linear-gradient(to bottom, #3d2b1f, #241911);
+            border-top: 3px solid #5d4037;
+        }
+
+        /* דמות הרקדנית */
+        .dancer-stage {
+            position: relative;
+            height: 250px;
+            width: 150px;
+            perspective: 1000px;
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .dancer-body {
+            width: 40px;
+            height: 150px;
+            background: #f472b6;
+            position: relative;
+            transform-style: preserve-3d;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .dancer-head {
+            position: absolute;
+            top: -42px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 36px;
+            height: 36px;
+            background: #ffdbac;
+            border-radius: 50%;
+        }
+
+        .dancer-arm {
+            position: absolute;
+            top: 30px;
+            height: 10px;
+            background: #ffdbac;
+            border-radius: 5px;
+            transition: width 0.3s ease-out;
+        }
+        .arm-left { right: 50%; transform-origin: right center; }
+        .arm-right { left: 50%; transform-origin: left center; }
+
+        @keyframes spin-anim {
+            from { transform: rotateY(0deg); }
+            to { transform: rotateY(360deg); }
+        }
+
+        .is-spinning {
+            animation: spin-anim var(--duration) linear infinite;
+        }
+
+        /* פאנל שליטה */
+        .control-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1.5rem;
+            padding: 1.25rem;
+            width: 100%;
+            max-width: 380px;
+            z-index: 30;
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: #f472b6;
+            cursor: pointer;
+        }
+
+        .score-box {
+            background: rgba(0,0,0,0.4);
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(244, 114, 182, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="studio-container">
+        <div class="floor"></div>
+
+        <!-- נתוני פיזיקה -->
+        <div class="flex gap-4 z-20 mt-4">
+            <div class="score-box text-center min-w-[100px]">
+                <div class="text-[10px] text-pink-300 font-bold">מהירות (ω)</div>
+                <div id="disp-omega" class="text-2xl font-mono">0.0</div>
+            </div>
+            <div class="score-box text-center min-w-[100px]">
+                <div class="text-[10px] text-blue-300 font-bold">סיבובים</div>
+                <div id="disp-turns" class="text-2xl font-mono">0.0</div>
+            </div>
+        </div>
+
+        <!-- הרקדנית -->
+        <div class="dancer-stage">
+            <div id="main-dancer" class="dancer-body">
+                <div class="dancer-head"></div>
+                <div id="armL" class="dancer-arm arm-left"></div>
+                <div id="armR" class="dancer-arm arm-right"></div>
+            </div>
+        </div>
+
+        <!-- לוח הבקרה -->
+        <div class="control-panel space-y-4">
+            <div class="text-center">
+                <h2 class="text-lg font-bold text-pink-400">הסימולטור של רומי</h2>
+                <p id="goal-info" class="text-[10px] text-gray-400">יעד: 2 סיבובים</p>
+            </div>
+
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs flex justify-between">תנופה (L): <span id="lblL">5</span></label>
+                    <input type="range" id="rangeL" min="1" max="10" value="5">
+                </div>
+                <div>
+                    <label class="text-xs flex justify-between">אסיפה (R): <span id="lblR">5</span></label>
+                    <input type="range" id="rangeR" min="1" max="10" value="5">
+                </div>
+                <button id="start-btn" class="w-full bg-pink-500 hover:bg-pink-600 py-3 rounded-xl font-bold transition-all active:scale-95 text-white">
+                    בצע פירואט!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- מודל תוצאה -->
+    <div id="result-modal" class="hidden fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-6 text-center">
+        <div class="bg-gray-800 p-8 rounded-2xl border border-pink-500/50 max-w-xs">
+            <h3 id="res-title" class="text-2xl font-bold mb-2"></h3>
+            <p id="res-desc" class="text-sm text-gray-300 mb-6"></p>
+            <button id="close-modal" class="bg-pink-500 text-white w-full py-2 rounded-lg font-bold">נסה שוב</button>
+        </div>
+    </div>
+
+    <script>
+        const dancer = document.getElementById('main-dancer');
+        const armL = document.getElementById('armL');
+        const armR = document.getElementById('armR');
+        const btn = document.getElementById('start-btn');
+        const rangeL = document.getElementById('rangeL');
+        const rangeR = document.getElementById('rangeR');
+
+        function updateUI() {
+            const r = rangeR.value;
+            const w = 55 - (r * 4.5);
+            armL.style.width = w + 'px';
+            armR.style.width = w + 'px';
+            document.getElementById('lblL').innerText = rangeL.value;
+            document.getElementById('lblR').innerText = rangeR.value;
+        }
+
+        rangeL.oninput = updateUI;
+        rangeR.oninput = updateUI;
+        updateUI();
+
+        let isSpinning = false;
+        btn.onclick = () => {
+            if (isSpinning) return;
+            isSpinning = true;
+            
+            const L = parseFloat(rangeL.value);
+            const R = 11 - parseFloat(rangeR.value);
+            const omega = (L * 4) / (R / 3);
+            
+            dancer.style.setProperty('--duration', (6 / omega) + 's');
+            dancer.classList.add('is-spinning');
+            btn.disabled = true;
+            btn.style.opacity = "0.5";
+
+            let ms = 0;
+            const timer = setInterval(() => {
+                ms += 50;
+                let t = (ms / 1000) * (omega / 3.5);
+                document.getElementById('disp-turns').innerText = t.toFixed(1);
+                document.getElementById('disp-omega').innerText = omega.toFixed(1);
+
+                if (ms >= 3000) {
+                    clearInterval(timer);
+                    dancer.classList.remove('is-spinning');
+                    showResult(t);
+                }
+            }, 50);
+        };
+
+        function showResult(t) {
+            const m = document.getElementById('result-modal');
+            const win = t >= 2.0;
+            document.getElementById('res-title').innerText = win ? "כל הכבוד!" : "כמעט...";
+            document.getElementById('res-title').style.color = win ? "#4ade80" : "#f87171";
+            document.getElementById('res-desc').innerText = `ביצעת ${t.toFixed(1)} סיבובים. ${win ? "הצלחת!" : "כדי להסתובב מהר יותר, הגדילי את האסיפה!"}`;
+            m.classList.remove('hidden');
+        }
+
+        document.getElementById('close-modal').onclick = () => {
+            document.getElementById('result-modal').classList.add('hidden');
+            document.getElementById('disp-turns').innerText = "0.0";
+            document.getElementById('disp-omega').innerText = "0.0";
+            btn.disabled = false;
+            btn.style.opacity = "1";
+            isSpinning = false;
+            updateUI();
+        };
+    </script>
+</body>
+</html>
